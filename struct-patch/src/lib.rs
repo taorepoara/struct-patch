@@ -43,10 +43,12 @@
 //! ```
 //!
 //! More details on how to use the the derive macro, including what attributes are available, are available under [`Patch`]
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 #[doc(hidden)]
 pub use struct_patch_derive::Patch;
+#[cfg(feature = "std")]
+pub mod std_impls;
 pub mod traits;
 pub use traits::*;
 
