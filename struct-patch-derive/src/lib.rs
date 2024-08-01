@@ -11,6 +11,7 @@ const PATCH: &str = "patch";
 const NAME: &str = "name";
 const ATTRIBUTE: &str = "attribute";
 const SKIP: &str = "skip";
+const FROM_PATCH: &str = "from_patch";
 
 #[proc_macro_derive(Patch, attributes(patch))]
 pub fn derive_patch(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -28,6 +29,7 @@ struct Patch {
     generics: syn::Generics,
     attributes: Vec<TokenStream>,
     fields: Vec<Field>,
+    from_patch: bool,
 }
 
 struct Field {
@@ -47,6 +49,7 @@ impl Patch {
             generics,
             attributes,
             fields,
+            from_patch,
         } = self;
 
         let patch_struct_fields = fields
@@ -157,12 +160,58 @@ impl Patch {
             }
         };
 
+        let from_struct_impl = quote! {
+            impl #generics From<#struct_name #generics> for #name #generics #where_clause {
+                fn from(s: #struct_name #generics) -> Self {
+                    #name {
+                        #(
+                            #renamed_field_names: Some(s.#renamed_field_names.into()),
+                        )*
+                        #(
+                            #original_field_names: Some(s.#original_field_names),
+                        )*
+                    }
+                }
+            }
+        };
+
+        let from_patch_impl = if from_patch {
+            quote! {
+                impl #generics From<#name #generics> for #struct_name #generics #where_clause {
+                    fn from(patch: #name #generics) -> Self {
+                        let mut s = Self::default();
+                        s.apply(patch);
+                        s
+                    }
+                }
+            }
+        } else {
+            quote!()
+        };
+        
+        // #[cfg(feature = "std")]
+        // let patch_std_impl = quote!{
+        //     impl #generics Into<std::option::Option<#name #generics>> for std::option::Option<#struct_name #generics> #where_clause {
+        //         fn into() -> std::option::Option<#name #generics> {
+        //             self.map(|x| x.into())
+        //         }
+        //     }
+        // };
+        // #[cfg(not(feature = "std"))]
+        let patch_std_impl = quote!();
+
         Ok(quote! {
             #patch_struct
 
             #patch_status_impl
 
             #patch_impl
+
+            #from_struct_impl
+
+            #from_patch_impl
+
+            #patch_std_impl
         })
     }
 
@@ -188,6 +237,7 @@ impl Patch {
         let mut name = None;
         let mut attributes = vec![];
         let mut fields = vec![];
+        let mut from_patch = false;
 
         for attr in attrs {
             if attr.path().to_string().as_str() != PATCH {
@@ -221,6 +271,10 @@ impl Patch {
                         let attribute: TokenStream = content.parse()?;
                         attributes.push(attribute);
                     }
+                    FROM_PATCH => {
+                        // #[patch(from_patch)]
+                        from_patch = true;
+                    }
                     _ => {
                         return Err(meta.error(format_args!(
                             "unknown patch container attribute `{}`",
@@ -249,6 +303,7 @@ impl Patch {
             generics,
             attributes,
             fields,
+            from_patch,
         })
     }
 }
@@ -420,6 +475,7 @@ mod tests {
                 attributes: vec![],
                 retyped: true,
             }],
+            from_patch: false,
         };
         let result = Patch::from_ast(syn::parse2(input).unwrap()).unwrap();
         assert_eq_sorted!(

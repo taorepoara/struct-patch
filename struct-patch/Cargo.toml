@@ -19,8 +19,11 @@ serde = { version = "1", features = ["derive"] }
 serde_with = "3.9.0"
 
 [features]
-default = ["status", "std"]
-std = []
+default = ["status"]
+# default = ["status", "std"]
+std = [
+    "struct-patch-derive/std"
+]
 status = [
     "struct-patch-derive/status"
 ]
