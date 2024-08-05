@@ -160,21 +160,6 @@ impl Patch {
             }
         };
 
-        let from_struct_impl = quote! {
-            impl #generics From<#struct_name #generics> for #name #generics #where_clause {
-                fn from(s: #struct_name #generics) -> Self {
-                    #name {
-                        #(
-                            #renamed_field_names: Some(s.#renamed_field_names.into()),
-                        )*
-                        #(
-                            #original_field_names: Some(s.#original_field_names),
-                        )*
-                    }
-                }
-            }
-        };
-
         let from_patch_impl = if from_patch {
             quote! {
                 impl #generics From<#name #generics> for #struct_name #generics #where_clause {
@@ -189,16 +174,6 @@ impl Patch {
             quote!()
         };
         
-        // #[cfg(feature = "std")]
-        // let patch_std_impl = quote!{
-        //     impl #generics Into<std::option::Option<#name #generics>> for std::option::Option<#struct_name #generics> #where_clause {
-        //         fn into() -> std::option::Option<#name #generics> {
-        //             self.map(|x| x.into())
-        //         }
-        //     }
-        // };
-        // #[cfg(not(feature = "std"))]
-        let patch_std_impl = quote!();
 
         Ok(quote! {
             #patch_struct
@@ -207,11 +182,7 @@ impl Patch {
 
             #patch_impl
 
-            #from_struct_impl
-
             #from_patch_impl
-
-            #patch_std_impl
         })
     }
 

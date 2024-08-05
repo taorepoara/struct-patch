@@ -20,10 +20,9 @@ serde_with = "3.9.0"
 
 [features]
 default = ["status"]
-# default = ["status", "std"]
-std = [
-    "struct-patch-derive/std"
-]
+std = ["box", "option"]
+box = []
+option = []
 status = [
     "struct-patch-derive/status"
 ]
