@@ -1,4 +1,7 @@
+#[cfg(any(feature = "box", feature = "option"))]
 use crate::Patch;
+#[cfg(feature = "box")]
+use std::boxed::Box;
 
 #[cfg(feature = "box")]
 impl<T, P> Patch<Box<P>> for T

@@ -173,7 +173,6 @@ impl Patch {
         } else {
             quote!()
         };
-        
 
         Ok(quote! {
             #patch_struct
