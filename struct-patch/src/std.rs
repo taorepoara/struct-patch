@@ -143,6 +143,7 @@ mod tests {
     }
 
     // Tests for From<P> for Patch<P> implementation
+    #[cfg(feature = "from")]
     mod from_patch {
         use super::*;
 

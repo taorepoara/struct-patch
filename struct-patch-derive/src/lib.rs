@@ -11,6 +11,7 @@ const PATCH: &str = "patch";
 const NAME: &str = "name";
 const ATTRIBUTE: &str = "attribute";
 const SKIP: &str = "skip";
+#[cfg(feature = "from")]
 const FROM_PATCH: &str = "from_patch";
 
 #[proc_macro_derive(Patch, attributes(patch))]
@@ -29,6 +30,7 @@ struct Patch {
     generics: syn::Generics,
     attributes: Vec<TokenStream>,
     fields: Vec<Field>,
+    #[cfg(feature = "from")]
     from_patch: bool,
 }
 
@@ -49,6 +51,7 @@ impl Patch {
             generics,
             attributes,
             fields,
+            #[cfg(feature = "from")]
             from_patch,
         } = self;
 
@@ -160,6 +163,7 @@ impl Patch {
             }
         };
 
+        #[cfg(feature = "from")]
         let from_patch_impl = if from_patch {
             quote! {
                 impl #generics From<#name #generics> for #struct_name #generics #where_clause {
@@ -173,6 +177,9 @@ impl Patch {
         } else {
             quote!()
         };
+
+        #[cfg(not(feature = "from"))]
+        let from_patch_impl = quote!();
 
         Ok(quote! {
             #patch_struct
@@ -207,6 +214,7 @@ impl Patch {
         let mut name = None;
         let mut attributes = vec![];
         let mut fields = vec![];
+        #[cfg(feature = "from")]
         let mut from_patch = false;
 
         for attr in attrs {
@@ -241,6 +249,7 @@ impl Patch {
                         let attribute: TokenStream = content.parse()?;
                         attributes.push(attribute);
                     }
+                    #[cfg(feature = "from")]
                     FROM_PATCH => {
                         // #[patch(from_patch)]
                         from_patch = true;
@@ -273,6 +282,7 @@ impl Patch {
             generics,
             attributes,
             fields,
+            #[cfg(feature = "from")]
             from_patch,
         })
     }
@@ -445,6 +455,7 @@ mod tests {
                 attributes: vec![],
                 retyped: true,
             }],
+            #[cfg(feature = "from")]
             from_patch: false,
         };
         let result = Patch::from_ast(syn::parse2(input).unwrap()).unwrap();
