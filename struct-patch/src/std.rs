@@ -103,6 +103,8 @@ mod tests {
     // Test for Patch<Option<P>> implementation
     #[cfg(feature = "option")]
     mod patch_option {
+        use serde::Deserialize;
+
         use super::*;
 
         #[test]
@@ -139,6 +141,99 @@ mod tests {
                     other: String::from("bye")
                 })
             );
+        }
+
+        /// Tests for nested optional fields
+        /// See https://stackoverflow.com/questions/44331037/how-can-i-distinguish-between-a-deserialized-field-that-is-missing-and-one-that
+        /// and https://github.com/serde-rs/serde/issues/1042
+        /// To understand how to manage optional fields in patch with serde
+        mod nested {
+            use serde::Deserializer;
+
+            use super::*;
+
+            #[derive(PartialEq, Debug, Patch, Deserialize, Default)]
+            #[patch(attribute(derive(PartialEq, Debug, Deserialize)))]
+            // Needed to use Option
+            #[patch(from_patch)]
+            struct B {
+                c: u32,
+                d: u32,
+            }
+
+            #[derive(PartialEq, Debug, Patch, Deserialize)]
+            #[patch(attribute(derive(PartialEq, Debug, Deserialize)))]
+            struct A {
+                #[patch(
+                    name = "Option<BPatch>",
+                    attribute(serde(deserialize_with = "deserialize_optional_field", default))
+                )]
+                b: Option<B>,
+            }
+
+            fn deserialize_optional_field<'de, T, D>(
+                deserializer: D,
+            ) -> Result<Option<Option<T>>, D::Error>
+            where
+                D: Deserializer<'de>,
+                T: Deserialize<'de>,
+            {
+                Ok(Some(Option::deserialize(deserializer)?))
+            }
+
+            #[test]
+            fn test_optional_nested_present() {
+                let mut a = A {
+                    b: Some(B { c: 0, d: 0 }),
+                };
+                let data = r#"{ "b": { "c": 1 } }"#;
+                let patch: APatch = serde_json::from_str(data).unwrap();
+                assert_eq!(
+                    patch,
+                    APatch {
+                        b: Some(Some(BPatch {
+                            c: Some(1),
+                            d: None
+                        }))
+                    }
+                );
+                a.apply(patch);
+                assert_eq!(
+                    a,
+                    A {
+                        b: Some(B { c: 1, d: 0 })
+                    }
+                );
+            }
+
+            #[test]
+            fn test_optional_nested_absent() {
+                let mut a = A {
+                    b: Some(B { c: 0, d: 0 }),
+                };
+                let data = r#"{ }"#;
+                let patch: APatch = serde_json::from_str(data).unwrap();
+                assert_eq!(patch, APatch { b: None });
+                a.apply(patch);
+                assert_eq!(
+                    a,
+                    A {
+                        b: Some(B { c: 0, d: 0 })
+                    }
+                );
+            }
+
+            #[test]
+            fn test_optional_nested_null() {
+                let mut a = A {
+                    b: Some(B { c: 0, d: 0 }),
+                };
+                let data = r#"{ "b": null }"#;
+                let patch: APatch = serde_json::from_str(data).unwrap();
+                assert_eq!(patch, APatch { b: Some(None) });
+                a.apply(patch);
+                assert_eq!(a, A { b: None });
+            }
         }
     }
 
