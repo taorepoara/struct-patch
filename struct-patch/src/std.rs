@@ -63,9 +63,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use struct_patch::Patch;
-
     use crate as struct_patch;
+    use crate::Patch;
 
     // Tests for Patch<Box<P>> implementation
     #[cfg(feature = "box")]
@@ -103,8 +102,6 @@ mod tests {
     // Test for Patch<Option<P>> implementation
     #[cfg(feature = "option")]
     mod patch_option {
-        use serde::Deserialize;
-
         use super::*;
 
         #[test]
@@ -147,10 +144,11 @@ mod tests {
         /// See https://stackoverflow.com/questions/44331037/how-can-i-distinguish-between-a-deserialized-field-that-is-missing-and-one-that
         /// and https://github.com/serde-rs/serde/issues/1042
         /// To understand how to manage optional fields in patch with serde
+        #[cfg(feature = "from")]
         mod nested {
-            use serde::Deserializer;
-
             use super::*;
+            use serde::Deserializer;
+            use serde::Deserialize;
 
             #[derive(PartialEq, Debug, Patch, Deserialize, Default)]
             #[patch(attribute(derive(PartialEq, Debug, Deserialize)))]

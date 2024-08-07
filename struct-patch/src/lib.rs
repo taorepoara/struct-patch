@@ -47,6 +47,7 @@
 
 #[doc(hidden)]
 pub use struct_patch_derive::Patch;
+#[cfg(any(feature = "box", feature = "option", feature = "from"))]
 pub mod std;
 pub mod traits;
 pub use traits::*;
