@@ -28,17 +28,16 @@ where
 #[cfg(feature = "option")]
 /// Patch implementation for Option<T>
 /// This implementation is used to apply a patch to an optional field
-/// The `From` trait is used to convert the patch to the struct type
 impl<T, P> Patch<Option<P>> for Option<T>
 where
-    T: Patch<P> + From<P>,
+    T: Patch<P>,
 {
     fn apply(&mut self, patch: Option<P>) {
         if let Some(patch) = patch {
             if let Some(self_) = self {
                 self_.apply(patch);
             } else {
-                *self = Some(patch.into());
+                *self = None;
             }
         } else {
             *self = None;
@@ -115,15 +114,6 @@ mod tests {
                 other: String,
             }
 
-            impl From<ItemPatch> for Item {
-                fn from(patch: ItemPatch) -> Self {
-                    Item {
-                        field: patch.field.unwrap_or_default(),
-                        other: patch.other.unwrap_or_default(),
-                    }
-                }
-            }
-
             let mut item = Some(Item {
                 field: 1,
                 other: String::from("hello"),
@@ -149,8 +139,8 @@ mod tests {
         /// To understand how to manage optional fields in patch with serde
         mod nested {
             use super::*;
-            use serde::Deserializer;
             use serde::Deserialize;
+            use serde::Deserializer;
 
             #[derive(PartialEq, Debug, Patch, Deserialize)]
             #[patch(attribute(derive(PartialEq, Debug, Deserialize)))]
@@ -167,15 +157,6 @@ mod tests {
                     attribute(serde(deserialize_with = "deserialize_optional_field", default))
                 )]
                 b: Option<B>,
-            }
-
-            impl From<BPatch> for B {
-                fn from(patch: BPatch) -> Self {
-                    B {
-                        c: patch.c.unwrap_or_default(),
-                        d: patch.d.unwrap_or_default(),
-                    }
-                }
             }
 
             fn deserialize_optional_field<'de, T, D>(
